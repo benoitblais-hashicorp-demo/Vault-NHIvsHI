@@ -136,7 +136,9 @@ No optional inputs.
 
 ## Resources
 
-No resources.
+The following resources are used by this module:
+
+- [vault_kv_secret_v2.secret](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/data-sources/kv_secret_v2) (data source)
 
 ## Outputs
 
