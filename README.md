@@ -136,7 +136,9 @@ No optional inputs.
 
 ## Resources
 
-No resources.
+The following resources are used by this module:
+
+- [terraform_data.display_secret](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) (resource)
 
 ## Outputs
 
