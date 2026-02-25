@@ -148,10 +148,6 @@ The following outputs are exported:
 
 Description: The key/value pairs retrieved from the KV v2 secret.
 
-### <a name="output_secret_metadata"></a> [secret\_metadata](#output\_secret\_metadata)
-
-Description: The metadata for the retrieved KV v2 secret (version, created\_time, etc.).
-
 <!-- markdownlint-enable -->
 ## References
 
