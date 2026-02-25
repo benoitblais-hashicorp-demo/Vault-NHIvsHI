@@ -39,11 +39,10 @@ Vault UI under **Access → Entities**.
 ## Demo Components
 
 1. **Terraform Configuration Files** (NHI — HCP Terraform dynamic credentials):
-   - **main.tf**: `ephemeral "vault_kv_secret_v2"` resource that reads the target secret without
-     storing it in state. A `terraform_data` `local-exec` provisioner prints the secret value to
-     the console during `terraform apply` (demo only — ephemeral values cannot be used in outputs).
+   - **main.tf**: `data "vault_kv_secret_v2"` data source that reads the target KV v2 secret.
    - **variables.tf**: Input variables for the KV v2 mount path and secret path.
-   - **outputs.tf**: No outputs — ephemeral values are not allowed in root module outputs.
+   - **outputs.tf**: Exports the retrieved secret data wrapped in `nonsensitive()` so it is
+     displayed in plaintext during `terraform apply` (demo only).
    - **providers.tf**: Vault provider configuration.
    - **versions.tf**: Terraform and provider version constraints.
 
@@ -143,7 +142,9 @@ never hardcode them in `.tfvars` files:
 - **Dual identity demonstration** — Shows NHI (HCP Terraform dynamic credentials and GitHub Actions OIDC JWT) and HI (userpass via Vault UI and GitHub PAT via CLI or workflow) reading the same KV v2 secret through distinct authentication flows.
 - **Same NHI entity, two platforms** — Both HCP Terraform and GitHub Actions resolve to the same Vault entity (`nhi-demo-app`), demonstrating platform-agnostic identity.
 - **Fully parameterized** — All connection and path details are supplied via input variables or workflow inputs; no code changes are required to target a different secret or cluster.
-- **Ephemeral secret handling** — The Terraform configuration uses `ephemeral "vault_kv_secret_v2"` so the secret is never written to state. The value is printed during `terraform apply` via a `local-exec` provisioner. The GitHub Actions workflows apply `::add-mask::` before echoing the value.
+- **Ephemeral secret handling** — The GitHub Actions workflows apply `::add-mask::` before echoing
+  the secret value. In Terraform, `nonsensitive()` is used to display the value during `terraform
+  apply` (demo only); the secret is not marked sensitive in state by design for this demo.
 - **Least-privilege ready** — The minimal Vault policy required is documented; the configuration does not require administrative permissions.
 
 ## Demo Value Proposition
@@ -152,7 +153,7 @@ never hardcode them in `.tfvars` files:
 - ✅ Demonstrates how the same Vault entity (`nhi-demo-app`) is used by two completely different NHI platforms (HCP Terraform and GitHub Actions), making cross-platform identity consolidation visible in the Vault UI.
 - ✅ Shows HI access to the same secret through two distinct human authentication methods (userpass UI login and GitHub PAT), both resolving to the `hi-demo-operator` entity.
 - ✅ Provides a fully parameterized, repeatable configuration that requires no code changes to target a different secret or cluster.
-- ✅ Uses Terraform ephemeral resources to ensure secrets are never stored in state, demonstrating security best practices even in a demo context.
+- ✅ Uses `nonsensitive()` in Terraform outputs to display the secret value in plaintext during\n  `terraform apply`, making the demo immediately visible without requiring additional commands.
 
 ## Documentation
 
@@ -192,11 +193,15 @@ No optional inputs.
 
 The following resources are used by this module:
 
-- [terraform_data.display_secret](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) (resource)
+- [vault_kv_secret_v2.secret](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/data-sources/kv_secret_v2) (data source)
 
 ## Outputs
 
-No outputs.
+The following outputs are exported:
+
+### <a name="output_secret_data"></a> [secret\_data](#output\_secret\_data)
+
+Description: The key/value pairs retrieved from the KV v2 secret.
 
 <!-- markdownlint-enable -->
 # References
