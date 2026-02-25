@@ -101,13 +101,13 @@ prints in plaintext in the workflow log. No static secret is stored anywhere. Co
 workflow inputs:
 
 - `vault_address`: HCP Vault cluster URL.
-- `vault_namespace`: Vault namespace (default: `admin/nhivshi-demo`).
-- `auth_path`: Mount path of the JWT auth method (default: `github`).
-- `vault_role`: Vault role used for authentication (default: `github-actions`).
+- `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
+- `auth_path`: Mount path of the JWT auth method (e.g. `github`).
+- `vault_role`: Vault role used for authentication (e.g. `github-actions`).
 - `jwt_audience`: Audience claim on the OIDC token — must match `bound_audiences` in the Vault JWT
-  role (default: `https://vault.hashicorp.cloud`).
-- `kv_mount`: KV v2 mount path (default: `secret`).
-- `secret_path`: Path to the secret within the KV v2 mount (default: `demo/nhi-credentials`).
+  role (e.g. `https://vault.hashicorp.cloud`).
+- `kv_mount`: KV v2 mount path (e.g. `secret`).
+- `secret_path`: Path to the secret within the KV v2 mount (e.g. `demo/nhi-credentials`).
 
 Documentation:
 
@@ -124,10 +124,10 @@ payload is never registered as a masked value, so all key/value pairs print as `
 Configure using workflow inputs:
 
 - `vault_address`: HCP Vault cluster URL.
-- `vault_namespace`: Vault namespace (default: `admin`).
-- `auth_path`: Mount path of the GitHub auth method (default: `github-hi`).
-- `kv_mount`: KV v2 mount path (default: `secret`).
-- `secret_path`: Path to the secret within the KV v2 mount.
+- `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
+- `auth_path`: Mount path of the GitHub auth method (e.g. `github-hi`).
+- `kv_mount`: KV v2 mount path (e.g. `secret`).
+- `secret_path`: Path to the secret within the KV v2 mount (e.g. `demo/hi-credentials`).
 
 Documentation:
 
