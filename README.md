@@ -5,14 +5,36 @@ This configuration provides a focused, runnable demonstration of how both **Non-
 
 It is intended as a companion to the [HCPVault-NHIvsHI](https://github.com/benoitblais-hashicorp-demo/HCPVault-NHIvsHI) and illustrates the contrast between the two identity types from a consumer perspective:
 
-- **NHI** — A GitHub Actions workflow requests a short-lived OIDC token and exchanges it for a Vault token using the JWT auth method. No static secret is ever stored.
-- **HI** — Terraform authenticates using a static Vault token supplied via an environment variable, representing a human operator's credentials.
-
 ## What This Demo Demonstrates
 
-- How a **non-human identity** (GitHub Actions) reads a KV v2 secret using short-lived, OIDC-based credentials via `vault-action`.
-- How a **human identity** reads the same KV v2 secret using Terraform with a static Vault token supplied through environment variables.
-- The fundamental difference in credential lifecycle: NHI tokens are ephemeral and context-bound; HI tokens are static and must be managed, rotated, and protected manually.
+### Non-Human Identity (NHI)
+
+A single Vault entity represents the application workload. Two completely different
+authentication methods resolve to that same entity, demonstrating that the identity is consistent
+regardless of the platform executing the workload:
+
+- **HCP Terraform** — The workspace uses dynamic provider credentials. HCP Terraform automatically
+  generates and injects a short-lived JWT token into each run, which is exchanged for a Vault token.
+  No static secret is stored anywhere.
+- **GitHub Actions** — The workflow requests a short-lived OIDC token from GitHub and exchanges it
+  for a Vault token using the JWT auth method. No static secret is stored anywhere.
+
+### Human Identity (HI)
+
+A human operator can authenticate to Vault and read the secret through multiple methods:
+
+- **Vault UI** — The operator logs in directly through the Vault web interface using username/password
+  (userpass auth method) and browses to the secret path.
+- **GitHub Personal Access Token (CLI or Workflow)** — The operator authenticates using a GitHub PAT
+  via Vault's GitHub auth method, either from a local terminal (`vault login -method=github`) or from
+  a GitHub Actions workflow, and reads the secret value.
+
+### Key Contrast
+
+NHI credentials are short-lived, cryptographically bound to a platform context, and never held by a
+human. HI credentials are static secrets that must be stored, remembered, rotated, and protected
+manually. Both resolve to distinct Vault entities, making the difference immediately visible in the
+Vault UI under **Access → Entities**.
 
 ## Demo Components
 
