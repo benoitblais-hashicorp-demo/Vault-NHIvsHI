@@ -39,11 +39,10 @@ Vault UI under **Access → Entities**.
 ## Demo Components
 
 1. **Terraform Configuration Files** (NHI — HCP Terraform dynamic credentials):
-   - **main.tf**: `ephemeral "vault_kv_secret_v2"` resource that reads the target secret without
-     storing it in state. A `terraform_data` `local-exec` provisioner prints the secret value to
-     the console during `terraform apply` (demo only — ephemeral values cannot be used in outputs).
+   - **main.tf**: `data "vault_kv_secret_v2"` data source that reads the target KV v2 secret.
    - **variables.tf**: Input variables for the KV v2 mount path and secret path.
-   - **outputs.tf**: No outputs — ephemeral values are not allowed in root module outputs.
+   - **outputs.tf**: Exports the retrieved secret data wrapped in `nonsensitive()` so it is
+     displayed in plaintext during `terraform apply` (demo only).
    - **providers.tf**: Vault provider configuration.
    - **versions.tf**: Terraform and provider version constraints.
 
@@ -73,15 +72,24 @@ Vault UI under **Access → Entities**.
 
 Authentication to Vault can be configured using one of the following methods:
 
-### Static Token (Human Identity / Terraform)
+### HCP Terraform Dynamic Credentials (NHI — Recommended)
 
-Supply credentials via environment variables — never hardcode them in `.tfvars` files:
+For enhanced security, use HCP Terraform's dynamic provider credentials to authenticate to Vault
+without storing static tokens. HCP Terraform automatically generates and injects a short-lived JWT
+token into each run. Set the following workspace environment variables:
 
-- `VAULT_ADDR`: Full URL of the HCP Vault cluster, e.g. `https://<id>.vault.hashicorp.cloud:8200`.
-- `VAULT_TOKEN`: A valid Vault token with read access to the target secret path.
-- `VAULT_NAMESPACE`: Target namespace, e.g. `admin` for HCP Vault Dedicated.
+- `TFC_VAULT_PROVIDER_AUTH`: Set to `true` to enable dynamic credentials.
+- `TFC_VAULT_ADDR`: Set to your HCP Vault Dedicated cluster address (e.g., `https://<id>.vault.hashicorp.cloud:8200`).
+- `TFC_VAULT_NAMESPACE`: Set to the target namespace (e.g., `admin`).
+- `TFC_VAULT_AUTH_PATH`: Mount path of the JWT auth method configured for HCP Terraform (e.g., `hcp-terraform`).
+- `TFC_VAULT_RUN_ROLE`: Vault JWT role name used for authentication (e.g., `hcp-terraform-workspace`).
 
-### GitHub Actions JWT (Non-Human Identity / vault-action)
+Documentation:
+
+- [HCP Terraform Dynamic Credentials](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials)
+- [Vault JWT Auth Method](https://developer.hashicorp.com/vault/docs/auth/jwt)
+
+### GitHub Actions JWT (NHI — vault-action)
 
 The workflow uses `hashicorp/vault-action` with OIDC-based authentication. The GitHub Actions runner
 requests a short-lived OIDC token from GitHub and exchanges it for a Vault token. No static secret
@@ -101,37 +109,51 @@ Documentation:
 - [Vault JWT Auth Method](https://developer.hashicorp.com/vault/docs/auth/jwt)
 - [hashicorp/vault-action](https://github.com/hashicorp/vault-action)
 
-### HCP Terraform Dynamic Credentials (Recommended)
+### GitHub Personal Access Token (HI — vault-action)
 
-For enhanced security, use HCP Terraform's dynamic provider credentials to authenticate to Vault
-without storing static tokens. HCP Terraform automatically generates and injects a short-lived JWT
-token into each run. Set the following workspace environment variables:
+The HI workflow authenticates using a GitHub PAT stored as the repository secret `VAULT_GITHUB_TOKEN`
+via Vault's GitHub auth method. The PAT is a static credential — it must be stored, rotated, and
+protected manually. Configure using workflow inputs:
 
-- `TFC_VAULT_PROVIDER_AUTH`: Set to `true` to enable dynamic credentials.
-- `TFC_VAULT_ADDR`: Set to your HCP Vault Dedicated cluster address (e.g., `https://<id>.vault.hashicorp.cloud:8200`).
-- `TFC_VAULT_NAMESPACE`: Set to the target namespace (e.g., `admin`).
-- `TFC_VAULT_AUTH_PATH`: Mount path of the JWT auth method configured for HCP Terraform (e.g., `hcp-terraform`).
-- `TFC_VAULT_RUN_ROLE`: Vault JWT role name used for authentication (e.g., `hcp-terraform-workspace`).
+- `vault_address`: HCP Vault cluster URL.
+- `vault_namespace`: Vault namespace (default: `admin`).
+- `auth_path`: Mount path of the GitHub auth method (default: `github-hi`).
+- `kv_mount`: KV v2 mount path (default: `secret`).
+- `secret_path`: Path to the secret within the KV v2 mount.
+- `secret_key`: Key name within the secret to retrieve.
 
 Documentation:
 
-- [HCP Terraform Dynamic Credentials](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials)
-- [Vault JWT Auth Method](https://developer.hashicorp.com/vault/docs/auth/jwt)
+- [Vault GitHub Auth Method](https://developer.hashicorp.com/vault/docs/auth/github)
+- [hashicorp/vault-action](https://github.com/hashicorp/vault-action)
+
+### Static Token (Local / Manual Terraform Runs)
+
+When running Terraform locally outside HCP Terraform, supply credentials via environment variables —
+never hardcode them in `.tfvars` files:
+
+- `VAULT_ADDR`: Full URL of the HCP Vault cluster, e.g. `https://<id>.vault.hashicorp.cloud:8200`.
+- `VAULT_TOKEN`: A valid Vault token with read access to the target secret path.
+- `VAULT_NAMESPACE`: Target namespace, e.g. `admin` for HCP Vault Dedicated.
 
 ## Features
 
 - **KV v2 secret read** — Retrieves a versioned secret from any KV v2 mount at a user-supplied path.
-- **Dual identity demonstration** — Shows NHI (GitHub Actions JWT) and HI (static Vault token) reading the same secret through different authentication flows.
+- **Dual identity demonstration** — Shows NHI (HCP Terraform dynamic credentials and GitHub Actions OIDC JWT) and HI (userpass via Vault UI and GitHub PAT via CLI or workflow) reading the same KV v2 secret through distinct authentication flows.
+- **Same NHI entity, two platforms** — Both HCP Terraform and GitHub Actions resolve to the same Vault entity (`nhi-demo-app`), demonstrating platform-agnostic identity.
 - **Fully parameterized** — All connection and path details are supplied via input variables or workflow inputs; no code changes are required to target a different secret or cluster.
-- **Secret masking** — Sensitive outputs are marked `sensitive = true` in Terraform; the GitHub Actions workflow applies `::add-mask::` before echoing the value.
+- **Ephemeral secret handling** — The GitHub Actions workflows apply `::add-mask::` before echoing
+  the secret value. In Terraform, `nonsensitive()` is used to display the value during `terraform
+  apply` (demo only); the secret is not marked sensitive in state by design for this demo.
 - **Least-privilege ready** — The minimal Vault policy required is documented; the configuration does not require administrative permissions.
 
 ## Demo Value Proposition
 
-- ✅ Illustrates the fundamental difference between NHI (short-lived, context-bound, zero static secrets) and HI (static credentials that must be managed, rotated, and protected).
-- ✅ Demonstrates how the same KV v2 secret can be accessed by two completely different identity types using two different authentication flows.
+- ✅ Illustrates the fundamental difference between NHI (short-lived, cryptographically bound, zero static secrets) and HI (static credentials that must be stored, rotated, and protected manually).
+- ✅ Demonstrates how the same Vault entity (`nhi-demo-app`) is used by two completely different NHI platforms (HCP Terraform and GitHub Actions), making cross-platform identity consolidation visible in the Vault UI.
+- ✅ Shows HI access to the same secret through two distinct human authentication methods (userpass UI login and GitHub PAT), both resolving to the `hi-demo-operator` entity.
 - ✅ Provides a fully parameterized, repeatable configuration that requires no code changes to target a different secret or cluster.
-- ✅ Shows how sensitive outputs are handled safely in both Terraform and GitHub Actions environments.
+- ✅ Uses `nonsensitive()` in Terraform outputs to display the secret value in plaintext during\n  `terraform apply`, making the demo immediately visible without requiring additional commands.
 
 ## Documentation
 
@@ -171,11 +193,15 @@ No optional inputs.
 
 The following resources are used by this module:
 
-- [terraform_data.display_secret](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) (resource)
+- [vault_kv_secret_v2.secret](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/data-sources/kv_secret_v2) (data source)
 
 ## Outputs
 
-No outputs.
+The following outputs are exported:
+
+### <a name="output_secret_data"></a> [secret\_data](#output\_secret\_data)
+
+Description: The key/value pairs retrieved from the KV v2 secret.
 
 <!-- markdownlint-enable -->
 # References
