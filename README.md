@@ -38,18 +38,29 @@ Vault UI under **Access → Entities**.
 
 ## Demo Components
 
-1. **Terraform Configuration Files**:
-   - **main.tf**: `vault_kv_secret_v2` data source that reads the target secret.
+1. **Terraform Configuration Files** (NHI — HCP Terraform dynamic credentials):
+   - **main.tf**: `ephemeral "vault_kv_secret_v2"` resource that reads the target secret without
+     storing it in state. A `terraform_data` `local-exec` provisioner prints the secret value to
+     the console during `terraform apply` (demo only — ephemeral values cannot be used in outputs).
    - **variables.tf**: Input variables for the KV v2 mount path and secret path.
-   - **outputs.tf**: Exports the retrieved secret data (sensitive) and its metadata.
+   - **outputs.tf**: No outputs — ephemeral values are not allowed in root module outputs.
    - **providers.tf**: Vault provider configuration.
    - **versions.tf**: Terraform and provider version constraints.
 
-2. **GitHub Actions Workflow** (`.github/workflows/vault-read-secret.yml`):
+2. **GitHub Actions Workflow** (`.github/workflows/vault-read-secret-nhi.yml`) (NHI — GitHub OIDC JWT):
    - Triggered manually via `workflow_dispatch`.
    - All connection and authentication parameters are supplied as workflow inputs.
-   - Uses `hashicorp/vault-action` to authenticate via JWT and retrieve the secret.
-   - Masks the secret value in logs while still demonstrating successful retrieval.
+   - Uses `hashicorp/vault-action` to authenticate via JWT (OIDC) and retrieve the secret.
+   - Prints the secret value to the workflow log to demonstrate successful retrieval.
+
+3. **Human Identity Methods** (HI — no Terraform configuration required):
+   - **Vault UI** — The operator logs in via the Vault web interface using the userpass auth method
+     and reads the secret by browsing to its path.
+   - **GitHub PAT (CLI)** — The operator runs `vault login -method=github token=<PAT>` from a local
+     terminal and reads the secret with `vault kv get`.
+   - **GitHub PAT (Workflow)** (`.github/workflows/vault-read-secret-hi.yml`) — A GitHub Actions
+     workflow authenticates using a PAT stored as the repository secret `VAULT_GITHUB_TOKEN` via
+     Vault's GitHub auth method, then reads the secret using `vault-action`.
 
 ## Permissions
 
