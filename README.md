@@ -142,11 +142,7 @@ The following resources are used by this module:
 
 ## Outputs
 
-The following outputs are exported:
-
-### <a name="output_secret_data"></a> [secret\_data](#output\_secret\_data)
-
-Description: The key/value pairs retrieved from the KV v2 secret.
+No outputs.
 
 <!-- markdownlint-enable -->
 ## References
