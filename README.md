@@ -145,7 +145,7 @@ The following resources are used by this module:
 No outputs.
 
 <!-- markdownlint-enable -->
-## References
+# References
 
 - [HCP Vault documentation](https://developer.hashicorp.com/hcp/docs/vault)
 - [Terraform Vault provider – vault\_kv\_secret\_v2 data source](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/data-sources/kv_secret_v2)
