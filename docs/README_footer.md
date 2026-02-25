@@ -1,4 +1,4 @@
-## References
+# References
 
 - [HCP Vault documentation](https://developer.hashicorp.com/hcp/docs/vault)
 - [Terraform Vault provider – vault_kv_secret_v2 data source](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/data-sources/kv_secret_v2)
