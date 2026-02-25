@@ -4,7 +4,7 @@ output "secret_data" {
   sensitive   = true
 }
 
-output "secret_metadata" {
-  description = "The metadata for the retrieved KV v2 secret (version, created_time, etc.)."
-  value       = data.vault_kv_secret_v2.secret.metadata
-}
+# output "secret_metadata" {
+#   description = "The metadata for the retrieved KV v2 secret (version, created_time, etc.)."
+#   value       = data.vault_kv_secret_v2.secret.metadata
+# }
