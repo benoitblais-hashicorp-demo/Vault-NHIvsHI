@@ -48,8 +48,13 @@ Vault UI under **Access → Entities**.
 2. **GitHub Actions Workflow** (`.github/workflows/vault-read-secret-nhi.yml`) (NHI — GitHub OIDC JWT):
    - Triggered manually via `workflow_dispatch`.
    - All connection and authentication parameters are supplied as workflow inputs.
-   - Uses `hashicorp/vault-action` to authenticate via JWT (OIDC) and retrieve the secret.
-   - Prints the secret value to the workflow log to demonstrate successful retrieval.
+   - Uses direct `curl` calls to authenticate via GitHub OIDC JWT and retrieve the secret — intentionally
+     bypasses `vault-action` auto-masking so the secret value is displayed in plaintext in the workflow log.
+   - All three operations (OIDC token request, Vault login, secret read) run in a single step so the
+     OIDC token stays in a bash variable and is never written to `GITHUB_OUTPUT`, preventing GitHub
+     from redacting it as `***` when referenced across steps after masking.
+   - The OIDC token and Vault token are masked with `::add-mask::`; the secret payload is never registered
+     as a secret. All key/value pairs are extracted with `jq` and printed individually as `key = value`.
 
 3. **Human Identity Methods** (HI — no Terraform configuration required):
    - **Vault UI** — The operator logs in via the Vault web interface using the userpass auth method
@@ -58,7 +63,8 @@ Vault UI under **Access → Entities**.
      terminal and reads the secret with `vault kv get`.
    - **GitHub PAT (Workflow)** (`.github/workflows/vault-read-secret-hi.yml`) — A GitHub Actions
      workflow authenticates using a PAT stored as the repository secret `VAULT_GITHUB_TOKEN` via
-     Vault's GitHub auth method, then reads the secret using `vault-action`.
+     Vault's GitHub auth method using direct `curl` calls. The PAT and Vault token are masked;
+     all key/value pairs are printed individually as `key = value` in the workflow log.
 
 ## Permissions
 
@@ -88,43 +94,49 @@ Documentation:
 - [HCP Terraform Dynamic Credentials](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials)
 - [Vault JWT Auth Method](https://developer.hashicorp.com/vault/docs/auth/jwt)
 
-### GitHub Actions JWT (NHI — vault-action)
+### GitHub Actions JWT (NHI — curl)
 
-The workflow uses `hashicorp/vault-action` with OIDC-based authentication. The GitHub Actions runner
-requests a short-lived OIDC token from GitHub and exchanges it for a Vault token. No static secret
-is stored anywhere in the repository or runner environment. Configure using workflow inputs:
+The workflow uses direct `curl` calls instead of `vault-action` to avoid automatic secret masking.
+The GitHub Actions runner requests a short-lived OIDC token from GitHub, exchanges it for a Vault
+token via the JWT auth method, then reads the KV v2 secret. All three operations run in a single
+step so the OIDC token stays in a bash variable and is never written to `GITHUB_OUTPUT` — this
+prevents GitHub from redacting it as `***` when referenced across steps after masking. The OIDC
+token and Vault token are masked with `::add-mask::`; the secret payload is never registered as a
+masked value, so all key/value pairs print as `key = value`. No static secret is stored anywhere.
+Configure using workflow inputs:
 
-- `vault_address`: HCP Vault cluster URL.
-- `vault_namespace`: Vault namespace (default: `admin`).
-- `auth_method`: Vault auth method (default: `jwt`).
-- `auth_path`: Mount path of the auth method (default: `github`).
-- `vault_role`: Vault role used for authentication (default: `github-actions`).
-- `kv_mount`: KV v2 mount path (default: `secret`).
-- `secret_path`: Path to the secret within the KV v2 mount.
-- `secret_key`: Key name within the secret to retrieve.
+- `vault_address`: HCP Vault cluster URL (no trailing slash).
+- `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
+- `auth_path`: Mount path of the JWT auth method (e.g. `jwt_github`).
+- `vault_role`: Vault role used for authentication (e.g. `jwt_github_role`).
+- `jwt_audience`: Audience claim on the OIDC token — must match `bound_audiences` in the Vault JWT
+  role (e.g. `https://vault.hashicorp.cloud`).
+- `kv_mount`: KV v2 mount path (e.g. `secret`).
+- `secret_path`: Path to the secret within the KV v2 mount (e.g. `demo/nhi-credentials`).
 
 Documentation:
 
 - [Vault JWT Auth Method](https://developer.hashicorp.com/vault/docs/auth/jwt)
-- [hashicorp/vault-action](https://github.com/hashicorp/vault-action)
+- [GitHub Actions OIDC](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
 
-### GitHub Personal Access Token (HI — vault-action)
+### GitHub Personal Access Token (HI — curl)
 
 The HI workflow authenticates using a GitHub PAT stored as the repository secret `VAULT_GITHUB_TOKEN`
-via Vault's GitHub auth method. The PAT is a static credential — it must be stored, rotated, and
-protected manually. Configure using workflow inputs:
+via Vault's GitHub auth method using direct `curl` calls, bypassing `vault-action` auto-masking so
+secret values are displayed in plaintext. The PAT is a static credential — it must be stored,
+rotated, and protected manually. The PAT and Vault token are masked with `::add-mask::`; the secret
+payload is never registered as a masked value, so all key/value pairs print as `key = value`.
+Configure using workflow inputs:
 
-- `vault_address`: HCP Vault cluster URL.
-- `vault_namespace`: Vault namespace (default: `admin`).
-- `auth_path`: Mount path of the GitHub auth method (default: `github-hi`).
-- `kv_mount`: KV v2 mount path (default: `secret`).
-- `secret_path`: Path to the secret within the KV v2 mount.
-- `secret_key`: Key name within the secret to retrieve.
+- `vault_address`: HCP Vault cluster URL (no trailing slash).
+- `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
+- `auth_path`: Mount path of the GitHub auth method (e.g. `github`).
+- `kv_mount`: KV v2 mount path (e.g. `secret`).
+- `secret_path`: Path to the secret within the KV v2 mount (e.g. `demo/hi-credentials`).
 
 Documentation:
 
 - [Vault GitHub Auth Method](https://developer.hashicorp.com/vault/docs/auth/github)
-- [hashicorp/vault-action](https://github.com/hashicorp/vault-action)
 
 ### Static Token (Local / Manual Terraform Runs)
 
@@ -141,9 +153,12 @@ never hardcode them in `.tfvars` files:
 - **Dual identity demonstration** — Shows NHI (HCP Terraform dynamic credentials and GitHub Actions OIDC JWT) and HI (userpass via Vault UI and GitHub PAT via CLI or workflow) reading the same KV v2 secret through distinct authentication flows.
 - **Same NHI entity, two platforms** — Both HCP Terraform and GitHub Actions resolve to the same Vault entity (`nhi-demo-app`), demonstrating platform-agnostic identity.
 - **Fully parameterized** — All connection and path details are supplied via input variables or workflow inputs; no code changes are required to target a different secret or cluster.
-- **Ephemeral secret handling** — The GitHub Actions workflows apply `::add-mask::` before echoing
-  the secret value. In Terraform, `nonsensitive()` is used to display the value during `terraform
-  apply` (demo only); the secret is not marked sensitive in state by design for this demo.
+- **Intentional plaintext output** — Both GitHub Actions workflows use direct `curl` calls instead
+  of `vault-action` so the secret payload is never auto-masked. The PAT/OIDC token and Vault token
+  are masked with `::add-mask::`; all key/value pairs are extracted with `jq to_entries[]` and
+  printed individually as `key = value` in the workflow log. In Terraform, `nonsensitive()` is used
+  to display the secret during `terraform apply` (demo only); the secret is not marked sensitive in
+  state by design for this demo.
 - **Least-privilege ready** — The minimal Vault policy required is documented; the configuration does not require administrative permissions.
 
 ## Demo Value Proposition
@@ -152,4 +167,5 @@ never hardcode them in `.tfvars` files:
 - ✅ Demonstrates how the same Vault entity (`nhi-demo-app`) is used by two completely different NHI platforms (HCP Terraform and GitHub Actions), making cross-platform identity consolidation visible in the Vault UI.
 - ✅ Shows HI access to the same secret through two distinct human authentication methods (userpass UI login and GitHub PAT), both resolving to the `hi-demo-operator` entity.
 - ✅ Provides a fully parameterized, repeatable configuration that requires no code changes to target a different secret or cluster.
-- ✅ Uses `nonsensitive()` in Terraform outputs to display the secret value in plaintext during\n  `terraform apply`, making the demo immediately visible without requiring additional commands.
+- ✅ Uses `nonsensitive()` in Terraform outputs to display the secret value in plaintext during
+  `terraform apply`, making the demo immediately visible without requiring additional commands.
