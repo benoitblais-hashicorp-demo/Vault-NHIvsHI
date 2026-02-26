@@ -50,6 +50,9 @@ Vault UI under **Access → Entities**.
    - All connection and authentication parameters are supplied as workflow inputs.
    - Uses direct `curl` calls to authenticate via GitHub OIDC JWT and retrieve the secret — intentionally
      bypasses `vault-action` auto-masking so the secret value is displayed in plaintext in the workflow log.
+   - All three operations (OIDC token request, Vault login, secret read) run in a single step so the
+     OIDC token stays in a bash variable and is never written to `GITHUB_OUTPUT`, preventing GitHub
+     from redacting it as `***` when referenced across steps after masking.
    - The OIDC token and Vault token are masked with `::add-mask::`; the secret payload is never registered
      as a secret. All key/value pairs are extracted with `jq` and printed individually as `key = value`.
 
@@ -95,10 +98,12 @@ Documentation:
 
 The workflow uses direct `curl` calls instead of `vault-action` to avoid automatic secret masking.
 The GitHub Actions runner requests a short-lived OIDC token from GitHub, exchanges it for a Vault
-token via the JWT auth method, then reads the KV v2 secret. The OIDC token and Vault token are
-masked with `::add-mask::`, but the secret payload is never registered as a masked value, so it
-prints in plaintext in the workflow log. No static secret is stored anywhere. Configure using
-workflow inputs:
+token via the JWT auth method, then reads the KV v2 secret. All three operations run in a single
+step so the OIDC token stays in a bash variable and is never written to `GITHUB_OUTPUT` — this
+prevents GitHub from redacting it as `***` when referenced across steps after masking. The OIDC
+token and Vault token are masked with `::add-mask::`; the secret payload is never registered as a
+masked value, so all key/value pairs print as `key = value`. No static secret is stored anywhere.
+Configure using workflow inputs:
 
 - `vault_address`: HCP Vault cluster URL.
 - `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
