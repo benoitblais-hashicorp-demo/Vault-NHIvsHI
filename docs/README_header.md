@@ -105,10 +105,10 @@ token and Vault token are masked with `::add-mask::`; the secret payload is neve
 masked value, so all key/value pairs print as `key = value`. No static secret is stored anywhere.
 Configure using workflow inputs:
 
-- `vault_address`: HCP Vault cluster URL.
+- `vault_address`: HCP Vault cluster URL (no trailing slash).
 - `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
-- `auth_path`: Mount path of the JWT auth method (e.g. `github`).
-- `vault_role`: Vault role used for authentication (e.g. `github-actions`).
+- `auth_path`: Mount path of the JWT auth method (e.g. `jwt_github`).
+- `vault_role`: Vault role used for authentication (e.g. `jwt_github_role`).
 - `jwt_audience`: Audience claim on the OIDC token — must match `bound_audiences` in the Vault JWT
   role (e.g. `https://vault.hashicorp.cloud`).
 - `kv_mount`: KV v2 mount path (e.g. `secret`).
@@ -128,9 +128,9 @@ rotated, and protected manually. The PAT and Vault token are masked with `::add-
 payload is never registered as a masked value, so all key/value pairs print as `key = value`.
 Configure using workflow inputs:
 
-- `vault_address`: HCP Vault cluster URL.
+- `vault_address`: HCP Vault cluster URL (no trailing slash).
 - `vault_namespace`: Vault namespace (e.g. `admin/nhivshi-demo`).
-- `auth_path`: Mount path of the GitHub auth method (e.g. `github-hi`).
+- `auth_path`: Mount path of the GitHub auth method (e.g. `github`).
 - `kv_mount`: KV v2 mount path (e.g. `secret`).
 - `secret_path`: Path to the secret within the KV v2 mount (e.g. `demo/hi-credentials`).
 
@@ -167,4 +167,5 @@ never hardcode them in `.tfvars` files:
 - ✅ Demonstrates how the same Vault entity (`nhi-demo-app`) is used by two completely different NHI platforms (HCP Terraform and GitHub Actions), making cross-platform identity consolidation visible in the Vault UI.
 - ✅ Shows HI access to the same secret through two distinct human authentication methods (userpass UI login and GitHub PAT), both resolving to the `hi-demo-operator` entity.
 - ✅ Provides a fully parameterized, repeatable configuration that requires no code changes to target a different secret or cluster.
-- ✅ Uses `nonsensitive()` in Terraform outputs to display the secret value in plaintext during\n  `terraform apply`, making the demo immediately visible without requiring additional commands.
+- ✅ Uses `nonsensitive()` in Terraform outputs to display the secret value in plaintext during
+  `terraform apply`, making the demo immediately visible without requiring additional commands.
